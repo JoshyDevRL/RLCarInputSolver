@@ -83,7 +83,7 @@ SolveResult RLCIS::Solve(const SolverCarState& fromState, const SolverCarState& 
 		result = SolveAir(fromState, toState, deltaTime, config);
 	}
 
-	{ // Apply input deadzone
+	if (config.applyDeadzones) { // Apply input deadzone
 		Deadzone(
 			{
 				&controls.throttle,
@@ -99,6 +99,7 @@ SolveResult RLCIS::Solve(const SolverCarState& fromState, const SolverCarState& 
 		);
 	}
 
-	controls.ClampFix();
+	if (config.clampControls)
+		controls.ClampFix();
 	return result;
 }
