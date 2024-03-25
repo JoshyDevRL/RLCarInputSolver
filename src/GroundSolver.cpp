@@ -209,7 +209,7 @@ SolveResult RLCIS::SolveGround(const SolverCarState& fromState, const SolverCarS
 				controls.handbrake = false;
 			} else {
 				// If alignment is below this factor, and not increasing, we are almost certainly powersliding
-				constexpr float HANDBRAKE_ALIGNMENT_THRESH = 0.94f;
+				constexpr float HANDBRAKE_ALIGNMENT_THRESH = 0.91f;
 				controls.handbrake = velAlignmentTo < HANDBRAKE_ALIGNMENT_THRESH;
 			}
 		}
