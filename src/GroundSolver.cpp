@@ -16,8 +16,10 @@ SolverResult RLCIS::SolveGround(const SolverCarState& fromState, const SolverCar
 	result.isOnGround = true;
 	CarControls& controls = result.controls;
 
-	Vec localVelFrom = fromState.rot.Dot(fromState.vel);
-	Vec localVelTo = toState.rot.Dot(toState.vel);
+	Vec localVelFrom = fromState.rot.Dot(fromState.vel),
+		localVelTo = toState.rot.Dot(toState.vel);
+	Vec localAngVelFrom = fromState.rot.Dot(fromState.angVel),
+		localAngVelTo = toState.rot.Dot(toState.angVel);
 	float forwardSpeed = localVelFrom.x;
 
 	Vec extrapVel = fromState.vel;
@@ -128,7 +130,15 @@ SolverResult RLCIS::SolveGround(const SolverCarState& fromState, const SolverCar
 
 			float expectedThrottleAccel = DRIVE_ACCEL * driveSpeedScale;
 
-			controls.throttle = RS_CLAMP(abs(driveAccel) / expectedThrottleAccel, 0, 1) * forwardDir;
+			float throttleMag = abs(driveAccel) / expectedThrottleAccel;
+
+			// Hard turns can cause a slight under-prediction of throttle
+			constexpr float TURNING_THROTTLE_SCALE_ADD = 0.2f;
+			constexpr float MAX_TURN_ANGVEL = 4.4f;
+			float turnScale = RS_MIN(abs(localAngVelFrom.z) / MAX_TURN_ANGVEL, 1);
+			throttleMag *= 1 + TURNING_THROTTLE_SCALE_ADD * turnScale;
+
+			controls.throttle = RS_CLAMP(throttleMag, 0, 1) * forwardDir;
 
 			constexpr float BOOST_ACCEL_THRESH = 100;
 			if (controls.throttle == 1 && relForwardAccel > expectedThrottleAccel + BOOST_ACCEL_THRESH) {
