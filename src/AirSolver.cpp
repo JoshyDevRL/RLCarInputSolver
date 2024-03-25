@@ -210,8 +210,10 @@ SolveResult RLCIS::SolveAir(const SolverCarState& fromState, const SolverCarStat
 	//	otherwise inputs will be produced that could cause random airborne flips/double jumps
 	if (!result.flipStarted && !result.isFlipping && !result.doubleJumping) {
 		float expectedJumpAccel = JUMP_ACCEL * deltaTime;
-		if (IsNear(deltaVelLocal.z, expectedJumpAccel, 0.35f))
+		float maxOtherAccel = expectedJumpAccel / 10;
+		if (IsNear(deltaVelLocal.z, expectedJumpAccel, 0.35f) && (abs(deltaVelLocal.x) + abs(deltaVelLocal.y)) < maxOtherAccel)
 			controls.jump = true;
+
 	}
 
 	if (config.steerIsYaw)
