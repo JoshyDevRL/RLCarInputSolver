@@ -128,7 +128,7 @@ SolveResult RLCIS::SolveGround(const SolverCarState& fromState, const SolverCarS
 		if (relForwardAccel > 0) {
 			// Accelerating
 
-			float expectedThrottleAccel = DRIVE_ACCEL * driveSpeedScale;
+			float expectedThrottleAccel = RS_MAX(DRIVE_ACCEL * driveSpeedScale, 0.01f);
 
 			float throttleMag = abs(driveAccel) / expectedThrottleAccel;
 
@@ -140,8 +140,8 @@ SolveResult RLCIS::SolveGround(const SolverCarState& fromState, const SolverCarS
 
 			controls.throttle = RS_CLAMP(throttleMag, 0, 1) * forwardDir;
 
-			constexpr float BOOST_ACCEL_THRESH = 100;
-			if (controls.throttle == 1 && relForwardAccel > expectedThrottleAccel + BOOST_ACCEL_THRESH) {
+			constexpr float THROTTLE_MAG_BOOST_THRESH = 2.1f;
+			if (throttleMag > THROTTLE_MAG_BOOST_THRESH) {
 				// We are accelerating much faster than driving acceleration
 				// It is probably boost
 				controls.boost = 1;
