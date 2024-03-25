@@ -65,7 +65,7 @@ bool CheckOnGround(const SolverCarState& carState) {
 	return onGround;
 }
 
-SolverResult RLCIS::Solve(const SolverCarState& fromState, const SolverCarState& toState, float deltaTime, const SolverConfig& config) {
+SolveResult RLCIS::Solve(const SolverCarState& fromState, const SolverCarState& toState, float deltaTime, const SolverConfig& config) {
 	using namespace Util;
 
 	bool onGround = CheckOnGround(toState);
@@ -74,7 +74,7 @@ SolverResult RLCIS::Solve(const SolverCarState& fromState, const SolverCarState&
 	if (deltaTime < g_ThreadArena->tickTime)
 		RS_ERR_CLOSE("RLCIS::Solve(): Cannot solve for delta time less than RL tick time (1 / " << RL_TICKRATE << ")");
 
-	SolverResult result = {};
+	SolveResult result = {};
 	CarControls& controls = result.controls;
 	if (onGround) {
 		assert(g_ThreadCar != NULL);

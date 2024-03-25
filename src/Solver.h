@@ -33,7 +33,7 @@ namespace RLCIS {
 		bool steerIsYaw = true;
 	};
 
-	struct SolverResult {
+	struct SolveResult {
 		CarControls controls;
 
 		bool isOnGround;
@@ -41,8 +41,8 @@ namespace RLCIS {
 		bool flipStarted, isFlipping;
 		bool doubleJumping;
 
-		SolverResult() = default;
+		SolveResult() = default;
 	};
 
-	SolverResult Solve(const SolverCarState& fromState, const SolverCarState& toState, float deltaTime, const SolverConfig& config);
+	SolveResult Solve(const SolverCarState& fromState, const SolverCarState& toState, float deltaTime, const SolverConfig& config);
 }

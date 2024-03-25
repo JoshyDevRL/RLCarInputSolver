@@ -45,7 +45,7 @@ Vec ReverseAirOrientInputs(Vec angVelBefore, Vec angVelAfter, RotMat rot, float 
 	return result;
 }
 
-SolverResult RLCIS::SolveAir(const SolverCarState& fromState, const SolverCarState& toState, float deltaTime, const SolverConfig& config) {
+SolveResult RLCIS::SolveAir(const SolverCarState& fromState, const SolverCarState& toState, float deltaTime, const SolverConfig& config) {
 	constexpr Vec GRAVITY = Vec(0, 0, GRAVITY_Z);
 	constexpr float TICK_FORCES_SCALE = 1 / 2.4f;
 
@@ -54,7 +54,7 @@ SolverResult RLCIS::SolveAir(const SolverCarState& fromState, const SolverCarSta
 
 	float forcesScale = TICK_FORCES_SCALE * tickDelta;
 
-	SolverResult result = {};
+	SolveResult result = {};
 	result.isOnGround = false;
 	CarControls& controls = result.controls;
 

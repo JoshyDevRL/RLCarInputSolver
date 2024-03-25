@@ -2,5 +2,5 @@
 #include "Solver.h"
 
 namespace RLCIS {
-	SolverResult SolveAir(const SolverCarState& fromState, const SolverCarState& toState, float deltaTime, const SolverConfig& config);
+	SolveResult SolveAir(const SolverCarState& fromState, const SolverCarState& toState, float deltaTime, const SolverConfig& config);
 }

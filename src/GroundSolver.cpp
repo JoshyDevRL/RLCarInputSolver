@@ -6,13 +6,13 @@ using namespace RLCIS;
 using namespace RLConst;
 using namespace Util;
 
-SolverResult RLCIS::SolveGround(const SolverCarState& fromState, const SolverCarState& toState, float deltaTime, const SolverConfig& config, Car* car) {
+SolveResult RLCIS::SolveGround(const SolverCarState& fromState, const SolverCarState& toState, float deltaTime, const SolverConfig& config, Car* car) {
 	constexpr Vec GRAVITY = Vec(0, 0, GRAVITY_Z);
 
 	int tickDelta = deltaTime / RL_TICKTIME;
 	int forceTickDelta = RS_MAX(tickDelta - 1, 1);
 
-	SolverResult result = {};
+	SolveResult result = {};
 	result.isOnGround = true;
 	CarControls& controls = result.controls;
 
