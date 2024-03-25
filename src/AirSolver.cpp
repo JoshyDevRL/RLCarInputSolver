@@ -45,7 +45,7 @@ Vec ReverseAirOrientInputs(Vec angVelBefore, Vec angVelAfter, RotMat rot, float 
 	return result;
 }
 
-CarControls RLCIS::SolveAir(const SolverCarState& fromState, const SolverCarState& toState, float deltaTime, const SolverConfig& config) {
+SolverResult RLCIS::SolveAir(const SolverCarState& fromState, const SolverCarState& toState, float deltaTime, const SolverConfig& config) {
 	constexpr Vec GRAVITY = Vec(0, 0, GRAVITY_Z);
 	constexpr float TICK_FORCES_SCALE = 1 / 2.4f;
 
@@ -54,7 +54,9 @@ CarControls RLCIS::SolveAir(const SolverCarState& fromState, const SolverCarStat
 
 	float forcesScale = TICK_FORCES_SCALE * tickDelta;
 
-	CarControls result = {};
+	SolverResult result = {};
+	result.isOnGround = false;
+	CarControls& controls = result.controls;
 
 	Vec extrapPos = fromState.pos + (GRAVITY * (deltaTime * deltaTime) / 2);
 	Vec extrapVel = LimitToMaxCarSpeed(fromState.vel + (GRAVITY * deltaTime));
@@ -78,19 +80,19 @@ CarControls RLCIS::SolveAir(const SolverCarState& fromState, const SolverCarStat
 				Vec expectedBoostVel = LimitToMaxCarSpeed(extrapVel + fromState.rot.forward * expectedBoostAccel);
 
 				if (expectedBoostVel.Dist(toState.vel) < (expectedBoostAccel / 2))
-					result.boost = true;
+					controls.boost = true;
 			}
 
-			if (!result.boost) {
+			if (!controls.boost) {
 				float expectedThrottleAccel = THROTTLE_AIR_FORCE * forcesScale;
 				if (IsNear(abs(deltaVelLocal.x), expectedThrottleAccel, 0.2f, 0.6f))
-					result.throttle = deltaVelLocal.x / expectedThrottleAccel;
+					controls.throttle = deltaVelLocal.x / expectedThrottleAccel;
 			}
 		}
 	}
 
 	// Check flip
-	bool flipStarted = false;
+	result.flipStarted = false;
 	{
 		float flatDeltaVel = deltaVel.Dist2D({});
 		if (IsNear(
@@ -125,32 +127,32 @@ CarControls RLCIS::SolveAir(const SolverCarState& fromState, const SolverCarStat
 			// Assume flip was done with maximum input
 			// The truth, as far as I can tell, is impossible to know
 			float scaleRatio = 1 / RS_MAX(abs(pitch), abs(yaw));
-			result.pitch = pitch * scaleRatio;
-			result.yaw = yaw * scaleRatio;
-			result.jump = true;
+			controls.pitch = pitch * scaleRatio;
+			controls.yaw = yaw * scaleRatio;
+			controls.jump = true;
 
-			flipStarted = true;
+			result.flipStarted = true;
 		}
 	}
 
 	// Check double jump
-	bool doubleJumping = false;
-	if (!flipStarted && IsNear(deltaVelLocal.z, RLConst::JUMP_IMMEDIATE_FORCE, 0.3f)) {
-		doubleJumping = true;
-		result.jump = true;
+	result.doubleJumping = false;
+	if (!result.flipStarted && IsNear(deltaVelLocal.z, RLConst::JUMP_IMMEDIATE_FORCE, 0.3f)) {
+		result.doubleJumping = true;
+		controls.jump = true;
 	}
 
-	if (!flipStarted && !doubleJumping) {
+	if (!result.flipStarted && !result.doubleJumping) {
 		Vec aerialInputs = ReverseAirOrientInputs(fromState.angVel, toState.angVel, fromState.rot, deltaTime);
 
-		result.roll = aerialInputs[0];
-		result.pitch = aerialInputs[1];
-		result.yaw = aerialInputs[2];
+		controls.roll = aerialInputs[0];
+		controls.pitch = aerialInputs[1];
+		controls.yaw = aerialInputs[2];
 	}
 
 	// In-flip detection
-	bool isFlipping = false;
-	if (!flipStarted && !doubleJumping) {
+	result.isFlipping = false;
+	if (!result.flipStarted && !result.doubleJumping) {
 
 		constexpr float TICK_GRAV = GRAVITY_Z * RL_TICKTIME;
 		constexpr float FLIP_Z_DAMP_SCALE = (1 - FLIP_Z_DAMP_120);
@@ -167,7 +169,7 @@ CarControls RLCIS::SolveAir(const SolverCarState& fromState, const SolverCarStat
 
 		if (IsNear(toState.vel.z, expectedZVel, 0.4f)) {
 			// We are in a flip
-			isFlipping = true;
+			result.isFlipping = true;
 
 			Vec angVelLocalFrom = fromState.angVel * fromState.rot;
 
@@ -183,10 +185,10 @@ CarControls RLCIS::SolveAir(const SolverCarState& fromState, const SolverCarStat
 				(RS_SGN(yawAngVel) != RS_SGN(rollAngVel));
 
 			if (isStall) {
-				result.yaw = RS_SGN(yawAngVel);
-				result.roll = -result.yaw;
+				controls.yaw = RS_SGN(yawAngVel);
+				controls.roll = -controls.yaw;
 
-				result.jump = true;
+				controls.jump = true;
 			} else {
 				// Check for flip cancel
 
@@ -197,7 +199,7 @@ CarControls RLCIS::SolveAir(const SolverCarState& fromState, const SolverCarStat
 				if (abs(angVelLocalFrom.y) > abs(angVelLocalTo.y) + (MIN_PITCH_DELTA_PER_TICK * tickDelta)) {
 					// We are cancelling
 					// TODO: Detect/reproduce partial cancels?
-					result.pitch = RS_SGN(angVelLocalFrom.y);
+					controls.pitch = RS_SGN(angVelLocalFrom.y);
 				}
 			}
 		}
@@ -206,11 +208,14 @@ CarControls RLCIS::SolveAir(const SolverCarState& fromState, const SolverCarStat
 	// Detect continued jump from when on ground
 	// It is important that this detection does not produce false positives,
 	//	otherwise inputs will be produced that could cause random airborne flips/double jumps
-	if (!flipStarted && !isFlipping && !doubleJumping) {
+	if (!result.flipStarted && !result.isFlipping && !result.doubleJumping) {
 		float expectedJumpAccel = JUMP_ACCEL * deltaTime;
 		if (IsNear(deltaVelLocal.z, expectedJumpAccel, 0.35f))
-			result.jump = true;
+			controls.jump = true;
 	}
+
+	if (config.steerIsYaw)
+		controls.steer = controls.yaw;
 
 	return result;
 }

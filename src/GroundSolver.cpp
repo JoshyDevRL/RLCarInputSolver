@@ -6,13 +6,15 @@ using namespace RLCIS;
 using namespace RLConst;
 using namespace Util;
 
-CarControls RLCIS::SolveGround(const SolverCarState& fromState, const SolverCarState& toState, float deltaTime, const SolverConfig& config, Car* car) {
+SolverResult RLCIS::SolveGround(const SolverCarState& fromState, const SolverCarState& toState, float deltaTime, const SolverConfig& config, Car* car) {
 	constexpr Vec GRAVITY = Vec(0, 0, GRAVITY_Z);
 
 	int tickDelta = deltaTime / RL_TICKTIME;
 	int forceTickDelta = RS_MAX(tickDelta - 1, 1);
 
-	CarControls result = {};
+	SolverResult result = {};
+	result.isOnGround = true;
+	CarControls& controls = result.controls;
 
 	Vec localVelFrom = fromState.rot.Dot(fromState.vel);
 	Vec localVelTo = toState.rot.Dot(toState.vel);
@@ -99,7 +101,7 @@ CarControls RLCIS::SolveGround(const SolverCarState& fromState, const SolverCarS
 		if (abs(fullSteerTurnAccelDelta) < MIN_TURN_ACCEL_DELTA)
 			fullSteerTurnAccelDelta = MIN_TURN_ACCEL_DELTA * RS_SGN(fullSteerTurnAccelDelta);
 
-		result.steer = (turnAccel - zeroSteerTurnAccel) / fullSteerTurnAccelDelta;
+		controls.steer = (turnAccel - zeroSteerTurnAccel) / fullSteerTurnAccelDelta;
 	}
 
 	float forwardAccel = localAccel.x;
@@ -126,31 +128,31 @@ CarControls RLCIS::SolveGround(const SolverCarState& fromState, const SolverCarS
 
 			float expectedThrottleAccel = DRIVE_ACCEL * driveSpeedScale;
 
-			result.throttle = RS_CLAMP(driveAccel / expectedThrottleAccel, 0, 1) * forwardDir;
+			controls.throttle = RS_CLAMP(abs(driveAccel) / expectedThrottleAccel, 0, 1) * forwardDir;
 
 			constexpr float BOOST_ACCEL_THRESH = 100;
-			if (result.throttle == 1 && relForwardAccel > expectedThrottleAccel + BOOST_ACCEL_THRESH) {
+			if (controls.throttle == 1 && relForwardAccel > expectedThrottleAccel + BOOST_ACCEL_THRESH) {
 				// We are accelerating much faster than driving acceleration
-					// It is probably boost
-				result.boost = 1;
+				// It is probably boost
+				controls.boost = 1;
 			}
 		} else {
 			// We are slowing down
 			// Could either be from brake input or from coasting-brake
 
-			float brakeAccel = -driveAccel;
+			float brakeAccel = abs(driveAccel);
 
 			float expectedBrakeAccel = BRAKE_TORQUE_AMOUNT * TORQUE_CONVERT_FACTOR;
 			float expectedCoastAccel = expectedBrakeAccel * COASTING_BRAKE_FACTOR;
 
 			// Since this is a binary option, we'll decide based on which accel value is closer
 			if (brakeAccel - expectedCoastAccel > (expectedBrakeAccel - expectedCoastAccel) / 2) {
-				result.throttle = -1 * forwardDir;
+				controls.throttle = -1 * forwardDir;
 
-				if (result.throttle == 1 && brakeAccel > expectedBrakeAccel * 1.25f) {
+				if (controls.throttle == 1 && brakeAccel > expectedBrakeAccel * 1.25f) {
 					// We are de-accelerating faster than brake
 					// It is probably boost
-					result.boost = 1;
+					controls.boost = 1;
 				}
 
 			} else {
@@ -158,9 +160,9 @@ CarControls RLCIS::SolveGround(const SolverCarState& fromState, const SolverCarS
 				// Special case for ambiguous case when driving at max drive speed
 				constexpr float MIN_COAST_BRAKE_ACCEL = 30.f;
 				if (brakeAccel < MIN_COAST_BRAKE_ACCEL && driveSpeedScale < 0.01f) {
-					result.throttle = 1 * forwardDir;
+					controls.throttle = 1 * forwardDir;
 				} else {
-					result.throttle = 0;
+					controls.throttle = 0;
 				}
 			}
 		}
@@ -191,14 +193,14 @@ CarControls RLCIS::SolveGround(const SolverCarState& fromState, const SolverCarS
 
 			if (velAlignmentTo < velAlignmentFrom - expectedAlignmentDrop) {
 				// Alignment is decreasing
-				result.handbrake = true;
+				controls.handbrake = true;
 			} else if (velAlignmentTo > velAlignmentFrom + expectedAlignmentRise) {
 				// Alignment is increasing
-				result.handbrake = false;
+				controls.handbrake = false;
 			} else {
 				// If alignment is below this factor, and not increasing, we are almost certainly powersliding
 				constexpr float HANDBRAKE_ALIGNMENT_THRESH = 0.94f;
-				result.handbrake = velAlignmentTo < HANDBRAKE_ALIGNMENT_THRESH;
+				controls.handbrake = velAlignmentTo < HANDBRAKE_ALIGNMENT_THRESH;
 			}
 		}
 	}
@@ -211,9 +213,12 @@ CarControls RLCIS::SolveGround(const SolverCarState& fromState, const SolverCarS
 		constexpr float MIN_TO_Z_VEL = MIN_JUMPING_VEL_DELTA * 0.7f;
 		
 		if (abs(localVelFrom.z) < MAX_FROM_Z_VEL && localVelTo.z > MIN_TO_Z_VEL && deltaVelLocal.z > MIN_JUMPING_VEL_DELTA) {
-			result.jump = true;
+			controls.jump = true;
 		}
 	}
+
+	if (config.steerIsYaw)
+		controls.yaw = controls.steer;
 
 	return result;
 }

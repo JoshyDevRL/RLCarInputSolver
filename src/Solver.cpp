@@ -65,7 +65,7 @@ bool CheckOnGround(const SolverCarState& carState) {
 	return onGround;
 }
 
-CarControls RLCIS::Solve(const SolverCarState& fromState, const SolverCarState& toState, float deltaTime, const SolverConfig& config) {
+SolverResult RLCIS::Solve(const SolverCarState& fromState, const SolverCarState& toState, float deltaTime, const SolverConfig& config) {
 	using namespace Util;
 
 	bool onGround = CheckOnGround(toState);
@@ -74,29 +74,24 @@ CarControls RLCIS::Solve(const SolverCarState& fromState, const SolverCarState& 
 	if (deltaTime < g_ThreadArena->tickTime)
 		RS_ERR_CLOSE("RLCIS::Solve(): Cannot solve for delta time less than RL tick time (1 / " << RL_TICKRATE << ")");
 
-	CarControls result = {};
+	SolverResult result = {};
+	CarControls& controls = result.controls;
 	if (onGround) {
 		assert(g_ThreadCar != NULL);
 		result = SolveGround(fromState, toState, deltaTime, config, g_ThreadCar);
-
-		if (config.steerIsYaw)
-			result.yaw = result.steer;
 	} else {
 		result = SolveAir(fromState, toState, deltaTime, config);
-
-		if (config.steerIsYaw)
-			result.steer = result.yaw;
 	}
 
 	{ // Apply input deadzone
 		Deadzone(
 			{
-				&result.throttle,
-				&result.steer,
+				&controls.throttle,
+				&controls.steer,
 
-				&result.pitch,
-				&result.yaw,
-				&result.roll
+				&controls.pitch,
+				&controls.yaw,
+				&controls.roll
 			},
 
 			config.inputDeadzone,
@@ -104,6 +99,6 @@ CarControls RLCIS::Solve(const SolverCarState& fromState, const SolverCarState& 
 		);
 	}
 
-	result.ClampFix();
+	controls.ClampFix();
 	return result;
 }
