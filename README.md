@@ -16,6 +16,8 @@ struct SolverCarState {
 ```
 That's it. There is no persistent data between solves.
 
+For Python: [python_example.py](python_example.py)
+
 ## How it works
 The solver uses a variety of heuristics and math to determine:
 - Throttle input (all surfaces, and air)
