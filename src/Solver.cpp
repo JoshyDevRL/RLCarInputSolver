@@ -25,8 +25,11 @@ RLCIS::SolverCarState::operator CarState() const {
 thread_local Arena* g_ThreadArena = NULL;
 thread_local Car* g_ThreadCar = NULL;
 
+bool g_Initialized = false;
+
 void RLCIS::Init() {
 	RocketSim::Init("./collision_meshes");
+	g_Initialized = true;
 }
 
 //////////////////////////////////////////////////////////////////
@@ -61,12 +64,15 @@ bool CheckOnGround(const SolverCarState& carState) {
 	// Undo potential changes to the simulated car state
 	// We might want to use this simulated car later on
 	g_ThreadCar->SetState((CarState)carState);
-
+	
 	return onGround;
 }
 
 SolveResult RLCIS::Solve(const SolverCarState& fromState, const SolverCarState& toState, float deltaTime, const SolverConfig& config) {
 	using namespace Util;
+
+	if (!g_Initialized)
+		Init();
 
 	bool onGround = CheckOnGround(toState);
 	// We don't need to check for the other state, it's not very helpful
