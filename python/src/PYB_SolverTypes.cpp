@@ -2,11 +2,11 @@
 
 using namespace RLCIS;
 
-
 PYB_INIT_F(SolverTypes) {
 #define PYB_CUR_CLASS SolverCarState
 	PYB_CLASS(SolverCarState)
 		PYB_DEFAULT_INITS()
+		.def(pyb::init<Vec, RotMat, Vec, Vec>(), PYBA("pos"), PYBA("rot_mat"), PYBA("vel"), PYBA("ang_vel"))
 		PYBP(pos)
 		PYBP_RN(rot, rot_mat)
 		PYBP(vel)

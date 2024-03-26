@@ -15,6 +15,8 @@ namespace RLCIS {
 		Vec vel, angVel;
 
 		SolverCarState() = default;
+		SolverCarState(Vec pos, RotMat rot, Vec vel, Vec angVel) 
+			: pos(pos), rot(rot), vel(vel), angVel(angVel) {}
 		explicit SolverCarState(const CarState& carState);
 
 		explicit operator CarState() const;
