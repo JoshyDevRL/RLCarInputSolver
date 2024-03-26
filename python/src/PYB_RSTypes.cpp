@@ -42,5 +42,24 @@ PYB_INIT_F(RSTypes) {
 		PYBP(boost)
 		PYBP(jump)
 		PYBP(handbrake)
+
+		.def("__str__", 
+			[](const CarControls& c) { 
+				return RS_STR(std::endl <<
+					"CarControls {" << std::endl <<
+					"  throttle: " << c.throttle << std::endl <<
+					"  steer: " << c.steer << std::endl <<
+					std::endl <<
+					"  pitch: " << c.pitch << std::endl <<
+					"  yaw: " << c.yaw << std::endl <<
+					"  roll: " << c.roll << std::endl <<
+					std::endl <<
+					"  jump: " << c.jump << std::endl <<
+					"  boost: " << c.boost << std::endl <<
+					"  handbrake: " << c.handbrake << std::endl <<
+					"}"
+				);
+			}
+		)
 		;
 }
